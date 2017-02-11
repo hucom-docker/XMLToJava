@@ -2,8 +2,8 @@ package mevenk.xmltojava;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
@@ -17,8 +17,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -54,34 +52,40 @@ public class XMLToJava {
 	private File xsdFileFromXML;
 	private File selectedDirForJavaFiles;
 
-	private JTextPane resultTextPane;
+	private static JTextPane resultTextPane = new JTextPane();
 	private JLabel enterPackageNameLabel;
 	private JTextField packageNameTextField;
+	
+	JPopupMenu packageNameTextFieldContextMenu = new JPopupMenu();
 
 	/**
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-		EventQueue.invokeLater(new Runnable() {
-			public void run() {
-				try {
-					XMLToJava window = new XMLToJava();
-					window.frame.setVisible(true);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
+		try {
+
+			PrintStream resultTextPanePrintStream = new PrintStream(new ResultTextPaneOutputStream(resultTextPane),
+					true);
+			System.setOut(resultTextPanePrintStream);
+			System.setErr(resultTextPanePrintStream);
+			System.out.println();
+
+			XMLToJava window = new XMLToJava();
+			window.frame.setVisible(true);
+
+		} catch (Exception exception) {
+			JOptionPane.showMessageDialog(null, "Error!!" + lineSeparator + exception.getMessage(), "Error",
+					JOptionPane.ERROR_MESSAGE);
+		}
 	}
 
 	/**
 	 * Create the application.
 	 */
 	public XMLToJava() {
+
 		initialize();
-		PrintStream resultTextPanePrintStream = new PrintStream(new ResultTextPaneOutputStream(resultTextPane));
-		System.setOut(resultTextPanePrintStream);
-		System.setErr(resultTextPanePrintStream);
+
 	}
 
 	/**
@@ -105,7 +109,8 @@ public class XMLToJava {
 		convertButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
-				Document resultPaneDocument = resultTextPane.getDocument();
+				//frame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
+
 				boolean valid = true;
 
 				try {
@@ -113,36 +118,28 @@ public class XMLToJava {
 					resultTextPane.setText("");
 
 					if (xmlFileSelected == null || !xmlFileSelected.exists()) {
-
-						resultPaneDocument.insertString(resultPaneDocument.getLength(),
-								lineSeparator + "XML File required !!", null);
+						System.out.println("XML File required !!");
 						valid = false;
 					} else {
-						resultPaneDocument.insertString(resultPaneDocument.getLength(),
-								lineSeparator + "XSD File : " + xmlFileSelected.getPath(), null);
+						System.out.println("XSD File : " + xmlFileSelected.getPath());
 					}
 
 					if (selectedDirForJavaFiles == null || !selectedDirForJavaFiles.exists()) {
-
-						resultPaneDocument.insertString(resultPaneDocument.getLength(),
-								lineSeparator + "Dir for Java Files required !!", null);
+						System.out.println("Dir for Java Files required !!");
 						valid = false;
 					} else {
-						resultPaneDocument.insertString(resultPaneDocument.getLength(),
-								lineSeparator + "Dir path : " + selectedDirForJavaFiles.getPath(), null);
+						System.out.println("Dir path : " + selectedDirForJavaFiles.getPath());
 					}
 
 					if (packageNameTextField.getText().length() == 0) {
-
-						resultPaneDocument.insertString(resultPaneDocument.getLength(),
-								lineSeparator + "package required !!", null);
+						System.out.println("package required !!");
 						valid = false;
 					} else {
-						resultPaneDocument.insertString(resultPaneDocument.getLength(),
-								lineSeparator + "package : " + packageNameTextField.getText(), null);
+						System.out.println("package : " + packageNameTextField.getText());
 					}
 
 					if (!valid) {
+						//frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 						return;
 					}
 
@@ -150,46 +147,38 @@ public class XMLToJava {
 							+ xmlFileSelected.getName().replaceFirst("[.][^.]+$", "") + ".xsd");
 
 					if (xsdFileFromXML.exists()) {
-						resultPaneDocument.insertString(resultPaneDocument.getLength(), lineSeparator + lineSeparator
-								+ "Deleting existing XSD(" + xsdFileFromXML.getPath() + ")", null);
+						System.out.println(lineSeparator + "Deleting existing XSD(" + xsdFileFromXML.getPath() + ")");
 						xsdFileFromXML.delete();
 					}
 
 					boolean xsdFileGenerated = new XSDGenerator().generateXSD(xmlFileSelected, xsdFileFromXML);
 
 					if (!xsdFileGenerated) {
-
-						resultPaneDocument.insertString(resultPaneDocument.getLength(),
-								lineSeparator + "XSD Generation Failure", null);
+						System.out.println("XSD Generation Failure");
+						//frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 						return;
 
 					} else {
-						resultPaneDocument.insertString(resultPaneDocument.getLength(),
-								lineSeparator + "XSD Generation Success", null);
+						System.out.println("XSD Generation Success");
 					}
 
 					if (selectedDirForJavaFiles.listFiles().length != 0) {
-						resultPaneDocument.insertString(resultPaneDocument.getLength(),
-								lineSeparator + lineSeparator + "Deleting " + selectedDirForJavaFiles.getPath(), null);
+						System.out.println(
+								lineSeparator + "Deleting " + selectedDirForJavaFiles.getPath() + lineSeparator);
 						selectedDirForJavaFiles.delete();
 						selectedDirForJavaFiles.mkdir();
 					}
 
 					XJCProcessExecutor xJCProcessExecutor = new XJCProcessExecutor();
 					xJCProcessExecutor.executeXJCCommand(selectedDirForJavaFiles.getPath(),
-							packageNameTextField.getText(), xsdFileFromXML.getPath(), resultPaneDocument);
+							packageNameTextField.getText(), xsdFileFromXML.getPath());
 
 				} catch (Exception exception) {
-					try {
-						StringWriter exceptionStringWriter = new StringWriter();
-						exception.printStackTrace(new PrintWriter(exceptionStringWriter));
-						resultPaneDocument.insertString(resultPaneDocument.getLength(),
-								lineSeparator + "Error !! " + lineSeparator + exceptionStringWriter.toString(), null);
-					} catch (BadLocationException badLocationException) {
-						JOptionPane.showMessageDialog(frame, badLocationException.toString(), "Error!!",
-								JOptionPane.ERROR_MESSAGE);
-					}
+					exception.printStackTrace();
+					//frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 				}
+
+				//frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 
 			}
 		});
@@ -199,7 +188,6 @@ public class XMLToJava {
 		scrollPane.setBounds(10, 220, 570, 225);
 		frame.getContentPane().add(scrollPane);
 
-		resultTextPane = new JTextPane();
 		scrollPane.setViewportView(resultTextPane);
 		resultTextPane.setEditable(false);
 		resultTextPane.setFont(new Font("Consolas", Font.BOLD, 12));
@@ -220,12 +208,8 @@ public class XMLToJava {
 				int xsdFileChooserReturnVal = xmlFileChooser.showOpenDialog(frame);
 				if (xsdFileChooserReturnVal == JFileChooser.APPROVE_OPTION) {
 					xmlFileSelected = xmlFileChooser.getSelectedFile();
-					try {
-						selextedXMLFileLabel.setText(xmlFileSelected.getName());
-						selextedXMLFileLabel.setToolTipText(xmlFileSelected.getPath());
-					} catch (Exception ex) {
-						ex.printStackTrace(System.err);
-					}
+					selextedXMLFileLabel.setText(xmlFileSelected.getName());
+					selextedXMLFileLabel.setToolTipText(xmlFileSelected.getPath());
 				}
 
 			}
@@ -248,12 +232,8 @@ public class XMLToJava {
 				int dirForJavaClassesFileChooserReturnVal = javaFilesDirFileChooser.showOpenDialog(frame);
 				if (dirForJavaClassesFileChooserReturnVal == JFileChooser.APPROVE_OPTION) {
 					selectedDirForJavaFiles = javaFilesDirFileChooser.getSelectedFile();
-					try {
-						selectedDirForJavaFilesLabel.setText(selectedDirForJavaFiles.getName());
-						selectedDirForJavaFilesLabel.setToolTipText(selectedDirForJavaFiles.getPath());
-					} catch (Exception ex) {
-						ex.printStackTrace(System.err);
-					}
+					selectedDirForJavaFilesLabel.setText(selectedDirForJavaFiles.getName());
+					selectedDirForJavaFilesLabel.setToolTipText(selectedDirForJavaFiles.getPath());
 				}
 
 			}
@@ -313,7 +293,7 @@ public class XMLToJava {
 		frame.getContentPane().add(packageNameTextField);
 		packageNameTextField.setColumns(50);
 
-		JPopupMenu packageNameTextFieldContextMenu = new JPopupMenu();
+		packageNameTextFieldContextMenu = new JPopupMenu();
 		addPopup(packageNameTextField, packageNameTextFieldContextMenu);
 
 		JButton packageNameTextFieldContextMenuCopyButton = new JButton("Copy");
@@ -392,14 +372,12 @@ class ResultTextPaneOutputStream extends OutputStream {
 
 	@Override
 	public void write(int b) throws IOException {
-		// redirects data to the text area
 		try {
 			resultPaneDocument.insertString(resultPaneDocument.getLength(), String.valueOf((char) b), null);
-		} catch (BadLocationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			resultTextPane.setCaretPosition(resultTextPane.getDocument().getLength());
+		} catch (BadLocationException badLocationException) {
+			badLocationException.printStackTrace();
 		}
-		// scrolls the text area to the end of data
-		resultTextPane.setCaretPosition(resultTextPane.getDocument().getLength());
+
 	}
 }
