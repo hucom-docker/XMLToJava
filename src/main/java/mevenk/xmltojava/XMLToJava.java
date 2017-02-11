@@ -1,15 +1,22 @@
 package mevenk.xmltojava;
 
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.Toolkit;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedReader;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.io.File;
-import java.io.InputStreamReader;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
@@ -18,30 +25,34 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 import javax.swing.JTextPane;
+import javax.swing.SwingConstants;
 import javax.swing.border.EtchedBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
-import javax.swing.SwingConstants;
-import javax.swing.JTextField;
-import java.awt.event.InputMethodListener;
-import java.awt.event.InputMethodEvent;
+
+import mevenk.xmltoxsd.XSDGenerator;
+import mevenk.xsdtojava.XJCProcessExecutor;
 
 public class XMLToJava {
 
-	final String lineSeparator = System.lineSeparator();
+	public static final String lineSeparator = System.lineSeparator();
 
 	private JFrame frame;
-	private JFileChooser xsdFileChooser = new JFileChooser();
-	private JFileChooser xsdClassesDirFileChooser = new JFileChooser();
-	JLabel selextedXSDFileLabel = new JLabel("");
-	JLabel selextedDirForJavaFilesLabel = new JLabel("");
+	private JButton convertButton;
 
-	File xsdFileSelected;
-	File xsdClassesDir;
-	String packageName;
+	private JFileChooser xmlFileChooser = new JFileChooser();
+	private JFileChooser javaFilesDirFileChooser = new JFileChooser();
+	private JLabel selextedXMLFileLabel = new JLabel("");
+	private JLabel selectedDirForJavaFilesLabel = new JLabel("");
+
+	private File xmlFileSelected;
+	private File xsdFileFromXML;
+	private File selectedDirForJavaFiles;
 
 	private JTextPane resultTextPane;
 	private JLabel enterPackageNameLabel;
@@ -68,6 +79,9 @@ public class XMLToJava {
 	 */
 	public XMLToJava() {
 		initialize();
+		PrintStream resultTextPanePrintStream = new PrintStream(new ResultTextPaneOutputStream(resultTextPane));
+		System.setOut(resultTextPanePrintStream);
+		System.setErr(resultTextPanePrintStream);
 	}
 
 	/**
@@ -76,7 +90,7 @@ public class XMLToJava {
 	private void initialize() {
 		frame = new JFrame();
 		frame.setResizable(false);
-		frame.setBounds(100, 100, 601, 450);
+		frame.setBounds(100, 100, 600, 500);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(null);
 
@@ -84,43 +98,47 @@ public class XMLToJava {
 		frame.setLocation(screenDimension.width / 2 - frame.getSize().width / 2,
 				screenDimension.height / 2 - frame.getSize().height / 2);
 
-		JButton convertButton = new JButton("Convert");
+		convertButton = new JButton("Convert");
+		convertButton.setBounds(240, 165, 120, 40);
+		convertButton.setLocation(frame.getSize().width / 2 - convertButton.getSize().width / 2, 165);
 		convertButton.setFont(new Font("Tahoma", Font.BOLD, 12));
 		convertButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
-				Document document = resultTextPane.getDocument();
+				Document resultPaneDocument = resultTextPane.getDocument();
 				boolean valid = true;
 
 				try {
 
 					resultTextPane.setText("");
 
-					if (selextedXSDFileLabel.getText().length() == 0) {
+					if (xmlFileSelected == null || !xmlFileSelected.exists()) {
 
-						document.insertString(document.getLength(), lineSeparator + "XSD File required !!", null);
+						resultPaneDocument.insertString(resultPaneDocument.getLength(),
+								lineSeparator + "XML File required !!", null);
 						valid = false;
 					} else {
-						document.insertString(document.getLength(),
-								lineSeparator + "XSD File : " + selextedXSDFileLabel.getText(), null);
+						resultPaneDocument.insertString(resultPaneDocument.getLength(),
+								lineSeparator + "XSD File : " + xmlFileSelected.getPath(), null);
 					}
 
-					if (selextedDirForJavaFilesLabel.getText().length() == 0) {
+					if (selectedDirForJavaFiles == null || !selectedDirForJavaFiles.exists()) {
 
-						document.insertString(document.getLength(), lineSeparator + "Dir for Java Files required !!",
-								null);
+						resultPaneDocument.insertString(resultPaneDocument.getLength(),
+								lineSeparator + "Dir for Java Files required !!", null);
 						valid = false;
 					} else {
-						document.insertString(document.getLength(),
-								lineSeparator + "Dir path : " + selextedDirForJavaFilesLabel.getText(), null);
+						resultPaneDocument.insertString(resultPaneDocument.getLength(),
+								lineSeparator + "Dir path : " + selectedDirForJavaFiles.getPath(), null);
 					}
 
 					if (packageNameTextField.getText().length() == 0) {
 
-						document.insertString(document.getLength(), lineSeparator + "package required !!", null);
+						resultPaneDocument.insertString(resultPaneDocument.getLength(),
+								lineSeparator + "package required !!", null);
 						valid = false;
 					} else {
-						document.insertString(document.getLength(),
+						resultPaneDocument.insertString(resultPaneDocument.getLength(),
 								lineSeparator + "package : " + packageNameTextField.getText(), null);
 					}
 
@@ -128,47 +146,45 @@ public class XMLToJava {
 						return;
 					}
 
-					if (xsdClassesDir.listFiles().length != 0) {
-						xsdClassesDir.delete();
-						document.insertString(document.getLength(),
-								lineSeparator + "Deleting " + xsdClassesDir.getPath(), null);
-						xsdClassesDir.mkdir();
+					xsdFileFromXML = new File(xmlFileSelected.getParent() + File.separator
+							+ xmlFileSelected.getName().replaceFirst("[.][^.]+$", "") + ".xsd");
+
+					if (xsdFileFromXML.exists()) {
+						resultPaneDocument.insertString(resultPaneDocument.getLength(), lineSeparator + lineSeparator
+								+ "Deleting existing XSD(" + xsdFileFromXML.getPath() + ")", null);
+						xsdFileFromXML.delete();
 					}
 
-					Runtime runtime = Runtime.getRuntime();
+					boolean xsdFileGenerated = new XSDGenerator().generateXSD(xmlFileSelected, xsdFileFromXML);
 
-					Process xjcProcess = runtime.exec(new String[] { "xjc", "-d", xsdClassesDir.getAbsolutePath(), "-p",
-							packageName, xsdFileSelected.getAbsolutePath() });
-					
-					int exitValue = xjcProcess.waitFor();
-					
-					BufferedReader xjcCommandBufferedReader = new BufferedReader(
-							new InputStreamReader(xjcProcess.getInputStream()));
-					String commandOutputLine = "";
-					while ((commandOutputLine = xjcCommandBufferedReader.readLine()) != null) {
-						document.insertString(document.getLength(), lineSeparator + commandOutputLine, null);
-					}
-					
-					
-					BufferedReader xjcCommandErrorBufferedReader = new BufferedReader(
-							new InputStreamReader(xjcProcess.getErrorStream()));
-					while ((commandOutputLine = xjcCommandErrorBufferedReader.readLine()) != null) {
-						document.insertString(document.getLength(), lineSeparator + commandOutputLine, null);
-					}
-					
+					if (!xsdFileGenerated) {
 
-					if (exitValue == 0) {
-						document.insertString(document.getLength(), lineSeparator + "SUCCESS", null);
+						resultPaneDocument.insertString(resultPaneDocument.getLength(),
+								lineSeparator + "XSD Generation Failure", null);
+						return;
+
 					} else {
-						document.insertString(document.getLength(), lineSeparator + "ERROR - Exit value : " + exitValue, null);
+						resultPaneDocument.insertString(resultPaneDocument.getLength(),
+								lineSeparator + "XSD Generation Success", null);
 					}
 
-				} catch (Exception exception) {exception.printStackTrace();
+					if (selectedDirForJavaFiles.listFiles().length != 0) {
+						resultPaneDocument.insertString(resultPaneDocument.getLength(),
+								lineSeparator + lineSeparator + "Deleting " + selectedDirForJavaFiles.getPath(), null);
+						selectedDirForJavaFiles.delete();
+						selectedDirForJavaFiles.mkdir();
+					}
+
+					XJCProcessExecutor xJCProcessExecutor = new XJCProcessExecutor();
+					xJCProcessExecutor.executeXJCCommand(selectedDirForJavaFiles.getPath(),
+							packageNameTextField.getText(), xsdFileFromXML.getPath(), resultPaneDocument);
+
+				} catch (Exception exception) {
 					try {
-						StringWriter stringWriter = new StringWriter();
-						exception.printStackTrace(new PrintWriter(stringWriter));
-						document.insertString(document.getLength(),
-								lineSeparator + "Error !! " + lineSeparator + stringWriter.toString(), null);
+						StringWriter exceptionStringWriter = new StringWriter();
+						exception.printStackTrace(new PrintWriter(exceptionStringWriter));
+						resultPaneDocument.insertString(resultPaneDocument.getLength(),
+								lineSeparator + "Error !! " + lineSeparator + exceptionStringWriter.toString(), null);
 					} catch (BadLocationException badLocationException) {
 						JOptionPane.showMessageDialog(frame, badLocationException.toString(), "Error!!",
 								JOptionPane.ERROR_MESSAGE);
@@ -177,11 +193,10 @@ public class XMLToJava {
 
 			}
 		});
-		convertButton.setBounds(240, 165, 120, 40);
 		frame.getContentPane().add(convertButton);
 
 		JScrollPane scrollPane = new JScrollPane();
-		scrollPane.setBounds(10, 220, 570, 180);
+		scrollPane.setBounds(10, 220, 570, 225);
 		frame.getContentPane().add(scrollPane);
 
 		resultTextPane = new JTextPane();
@@ -191,22 +206,23 @@ public class XMLToJava {
 		resultTextPane.setForeground(Color.WHITE);
 		resultTextPane.setBackground(Color.BLACK);
 
-		JButton selectXSDFileButton = new JButton("<html><center>Select XSD File</center></html>");
-		selectXSDFileButton.setToolTipText("Select XSD File");
-		selectXSDFileButton.addActionListener(new ActionListener() {
+		JButton selectXMLFileButton = new JButton("<html><center>Select XML File</center></html>");
+		selectXMLFileButton.setToolTipText("Select XML File");
+		selectXMLFileButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
-				xsdFileChooser = new JFileChooser();
-				xsdFileChooser.setMultiSelectionEnabled(false);
-				xsdFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-				FileNameExtensionFilter xsdFileNameExtensionFilter = new FileNameExtensionFilter("XSD Files", "xsd");
-				xsdFileChooser.setFileFilter(xsdFileNameExtensionFilter);
+				xmlFileChooser = new JFileChooser();
+				xmlFileChooser.setMultiSelectionEnabled(false);
+				xmlFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+				FileNameExtensionFilter xmlFileNameExtensionFilter = new FileNameExtensionFilter("XML Files", "xml");
+				xmlFileChooser.setFileFilter(xmlFileNameExtensionFilter);
 
-				int xsdFileChooserReturnVal = xsdFileChooser.showOpenDialog(frame);
+				int xsdFileChooserReturnVal = xmlFileChooser.showOpenDialog(frame);
 				if (xsdFileChooserReturnVal == JFileChooser.APPROVE_OPTION) {
-					xsdFileSelected = xsdFileChooser.getSelectedFile();
+					xmlFileSelected = xmlFileChooser.getSelectedFile();
 					try {
-						selextedXSDFileLabel.setText(xsdFileSelected.getPath());
+						selextedXMLFileLabel.setText(xmlFileSelected.getName());
+						selextedXMLFileLabel.setToolTipText(xmlFileSelected.getPath());
 					} catch (Exception ex) {
 						ex.printStackTrace(System.err);
 					}
@@ -214,9 +230,9 @@ public class XMLToJava {
 
 			}
 		});
-		selectXSDFileButton.setFont(new Font("Tahoma", Font.BOLD, 12));
-		selectXSDFileButton.setBounds(25, 11, 250, 40);
-		frame.getContentPane().add(selectXSDFileButton);
+		selectXMLFileButton.setFont(new Font("Tahoma", Font.BOLD, 12));
+		selectXMLFileButton.setBounds(25, 11, 250, 40);
+		frame.getContentPane().add(selectXMLFileButton);
 
 		JButton selectDirForJavaFilesButton = new JButton(
 				"<html><center>Select Directory to save <br />Java classes</center></html>");
@@ -224,16 +240,17 @@ public class XMLToJava {
 		selectDirForJavaFilesButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
-				xsdClassesDirFileChooser = new JFileChooser();
-				xsdClassesDirFileChooser.setMultiSelectionEnabled(false);
-				xsdClassesDirFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-				xsdClassesDirFileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+				javaFilesDirFileChooser = new JFileChooser();
+				javaFilesDirFileChooser.setMultiSelectionEnabled(false);
+				javaFilesDirFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+				javaFilesDirFileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 
-				int dirForJavaClassesFileChooserReturnVal = xsdClassesDirFileChooser.showOpenDialog(frame);
+				int dirForJavaClassesFileChooserReturnVal = javaFilesDirFileChooser.showOpenDialog(frame);
 				if (dirForJavaClassesFileChooserReturnVal == JFileChooser.APPROVE_OPTION) {
-					xsdClassesDir = xsdClassesDirFileChooser.getSelectedFile();
+					selectedDirForJavaFiles = javaFilesDirFileChooser.getSelectedFile();
 					try {
-						selextedDirForJavaFilesLabel.setText(xsdClassesDir.getPath());
+						selectedDirForJavaFilesLabel.setText(selectedDirForJavaFiles.getName());
+						selectedDirForJavaFilesLabel.setToolTipText(selectedDirForJavaFiles.getPath());
 					} catch (Exception ex) {
 						ex.printStackTrace(System.err);
 					}
@@ -245,26 +262,22 @@ public class XMLToJava {
 		selectDirForJavaFilesButton.setBounds(25, 62, 250, 40);
 		frame.getContentPane().add(selectDirForJavaFilesButton);
 
-		selextedXSDFileLabel = new JLabel("");
-		selextedXSDFileLabel.addInputMethodListener(new InputMethodListener() {
-			public void caretPositionChanged(InputMethodEvent event) {
-			}
+		selextedXMLFileLabel = new JLabel("");
+		selextedXMLFileLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		selextedXMLFileLabel.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		selextedXMLFileLabel.setFont(new Font("Trebuchet MS", Font.BOLD, 11));
+		selextedXMLFileLabel.setBounds(310, 11, 260, 40);
+		frame.getContentPane().add(selextedXMLFileLabel);
 
-			public void inputMethodTextChanged(InputMethodEvent event) {
-			}
-		});
-		selextedXSDFileLabel.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
-		selextedXSDFileLabel.setFont(new Font("Trebuchet MS", Font.BOLD, 11));
-		selextedXSDFileLabel.setBounds(310, 11, 260, 40);
-		frame.getContentPane().add(selextedXSDFileLabel);
-
-		selextedDirForJavaFilesLabel = new JLabel("");
-		selextedDirForJavaFilesLabel.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
-		selextedDirForJavaFilesLabel.setFont(new Font("Trebuchet MS", Font.BOLD, 11));
-		selextedDirForJavaFilesLabel.setBounds(310, 62, 260, 40);
-		frame.getContentPane().add(selextedDirForJavaFilesLabel);
+		selectedDirForJavaFilesLabel = new JLabel("");
+		selectedDirForJavaFilesLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		selectedDirForJavaFilesLabel.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		selectedDirForJavaFilesLabel.setFont(new Font("Trebuchet MS", Font.BOLD, 11));
+		selectedDirForJavaFilesLabel.setBounds(310, 62, 260, 40);
+		frame.getContentPane().add(selectedDirForJavaFilesLabel);
 
 		enterPackageNameLabel = new JLabel();
+		enterPackageNameLabel.setToolTipText("Enter package name");
 		enterPackageNameLabel.setHorizontalAlignment(SwingConstants.CENTER);
 		enterPackageNameLabel.setText("Enter package name");
 		enterPackageNameLabel.setFont(new Font("Trebuchet MS", Font.BOLD, 14));
@@ -273,10 +286,120 @@ public class XMLToJava {
 		frame.getContentPane().add(enterPackageNameLabel);
 
 		packageNameTextField = new JTextField();
+		packageNameTextField.addMouseMotionListener(new MouseMotionAdapter() {
+			@Override
+			public void mouseMoved(MouseEvent e) {
+				String packageNameTextFieldtext = packageNameTextField.getText();
+				String clipboardString;
+				try {
+					clipboardString = (String) Toolkit.getDefaultToolkit().getSystemClipboard()
+							.getData(DataFlavor.stringFlavor);
+
+					if (packageNameTextFieldtext != null && packageNameTextFieldtext.length() > 0
+							&& clipboardString.equalsIgnoreCase(packageNameTextFieldtext)) {
+						packageNameTextField.setToolTipText("Copied to Clipboard");
+					} else {
+						packageNameTextField.setToolTipText(null);
+					}
+
+				} catch (Exception exception) {
+					packageNameTextField.setToolTipText("Clipboard copy/pase not working !");
+				}
+
+			}
+		});
 		packageNameTextField.setFont(new Font("Source Code Pro Semibold", Font.PLAIN, 12));
 		packageNameTextField.setBounds(310, 113, 260, 41);
 		frame.getContentPane().add(packageNameTextField);
 		packageNameTextField.setColumns(50);
 
+		JPopupMenu packageNameTextFieldContextMenu = new JPopupMenu();
+		addPopup(packageNameTextField, packageNameTextFieldContextMenu);
+
+		JButton packageNameTextFieldContextMenuCopyButton = new JButton("Copy");
+		packageNameTextFieldContextMenuCopyButton.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				String packageNameTextFieldtext = packageNameTextField.getText();
+
+				if (packageNameTextFieldtext != null && packageNameTextFieldtext.length() > 0) {
+
+					StringSelection packageNameTextFieldTextStringSelection = new StringSelection(
+							packageNameTextFieldtext);
+					Toolkit.getDefaultToolkit().getSystemClipboard()
+							.setContents(packageNameTextFieldTextStringSelection, null);
+					packageNameTextField.setToolTipText("Copied to Clipboard");
+				}
+
+				if (packageNameTextFieldContextMenu.isShowing()) {
+					packageNameTextFieldContextMenu.setVisible(false);
+				}
+			}
+		});
+		packageNameTextFieldContextMenu.add(packageNameTextFieldContextMenuCopyButton);
+
+		JButton packageNameTextFieldContextMenuPasteButton = new JButton("Paste");
+		packageNameTextFieldContextMenuPasteButton.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				String clipboardString;
+				try {
+					clipboardString = (String) Toolkit.getDefaultToolkit().getSystemClipboard()
+							.getData(DataFlavor.stringFlavor);
+					packageNameTextField.setText(clipboardString);
+				} catch (Exception exception) {
+					packageNameTextField.setToolTipText("Clipboard copy/pase not working !");
+				}
+
+				if (packageNameTextFieldContextMenu.isShowing()) {
+					packageNameTextFieldContextMenu.setVisible(false);
+				}
+			}
+		});
+		packageNameTextFieldContextMenu.add(packageNameTextFieldContextMenuPasteButton);
+
+	}
+
+	private static void addPopup(Component component, final JPopupMenu popup) {
+		component.addMouseListener(new MouseAdapter() {
+			public void mousePressed(MouseEvent e) {
+				if (e.isPopupTrigger()) {
+					showMenu(e);
+				}
+			}
+
+			public void mouseReleased(MouseEvent e) {
+				if (e.isPopupTrigger()) {
+					showMenu(e);
+				}
+			}
+
+			private void showMenu(MouseEvent e) {
+				popup.show(e.getComponent(), e.getX(), e.getY());
+			}
+		});
+	}
+}
+
+class ResultTextPaneOutputStream extends OutputStream {
+	JTextPane resultTextPane;
+	Document resultPaneDocument;
+
+	public ResultTextPaneOutputStream(JTextPane resultTextPane) {
+		this.resultTextPane = resultTextPane;
+		this.resultPaneDocument = resultTextPane.getDocument();
+	}
+
+	@Override
+	public void write(int b) throws IOException {
+		// redirects data to the text area
+		try {
+			resultPaneDocument.insertString(resultPaneDocument.getLength(), String.valueOf((char) b), null);
+		} catch (BadLocationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		// scrolls the text area to the end of data
+		resultTextPane.setCaretPosition(resultTextPane.getDocument().getLength());
 	}
 }

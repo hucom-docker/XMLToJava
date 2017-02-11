@@ -4,5 +4,5 @@ Class-Path: xsd-gen-0.2.1.jar wiztools-commons-lib-0.4.1.jar xom-1.2.5
  .jar cli-7.jar
 Build-Jdk: 1.8.0_111
 Created-By: Maven Integration for Eclipse
-Main-Class: mevenk.xmltoxsd.XMLtoXSD.class
+Main-Class: mevenk.xmltojava.XMLToJava
 
