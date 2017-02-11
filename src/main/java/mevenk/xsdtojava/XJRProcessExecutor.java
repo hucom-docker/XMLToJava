@@ -24,7 +24,7 @@ public class XJRProcessExecutor {
 
 		Runtime runtime = Runtime.getRuntime();
 		Process xjcProcess = runtime
-				.exec(new String[] { "xjc -d " + dirForJavaClasses + " " + packageName + " " + XSDFilePath });
+				.exec(new String[] { "xjc", "-d", dirForJavaClasses, "-p", packageName, XSDFilePath });
 		int exitValue = xjcProcess.waitFor();
 
 		if (exitValue == 0) {
@@ -33,6 +33,11 @@ public class XJRProcessExecutor {
 
 		BufferedReader xjcCommandBufferedReader = new BufferedReader(
 				new InputStreamReader(xjcProcess.getInputStream()));
+		
+		String line = null;
+		while((line = xjcCommandBufferedReader.readLine()) != null){
+			System.out.println(line);
+		}
 
 		String xjcCommandOutput = xjcCommandBufferedReader.toString();
 
