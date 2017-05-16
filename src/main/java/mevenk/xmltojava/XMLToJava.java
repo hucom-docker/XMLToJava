@@ -2,7 +2,6 @@ package mevenk.xmltojava;
 
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Toolkit;
@@ -40,7 +39,7 @@ public class XMLToJava {
 
 	public static final String lineSeparator = System.lineSeparator();
 
-	private JFrame frame;
+	private JFrame frmXmlToJava;
 	private JButton convertButton;
 
 	private JFileChooser xmlFileChooser = new JFileChooser();
@@ -71,7 +70,7 @@ public class XMLToJava {
 			System.out.println();
 
 			XMLToJava window = new XMLToJava();
-			window.frame.setVisible(true);
+			window.frmXmlToJava.setVisible(true);
 
 		} catch (Exception exception) {
 			JOptionPane.showMessageDialog(null, "Error!!" + lineSeparator + exception.getMessage(), "Error",
@@ -92,19 +91,20 @@ public class XMLToJava {
 	 * Initialize the contents of the frame.
 	 */
 	private void initialize() {
-		frame = new JFrame();
-		frame.setResizable(false);
-		frame.setBounds(100, 100, 600, 500);
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.getContentPane().setLayout(null);
+		frmXmlToJava = new JFrame();
+		frmXmlToJava.setTitle("XML To JAVA");
+		frmXmlToJava.setResizable(false);
+		frmXmlToJava.setBounds(100, 100, 600, 500);
+		frmXmlToJava.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frmXmlToJava.getContentPane().setLayout(null);
 
 		Dimension screenDimension = Toolkit.getDefaultToolkit().getScreenSize();
-		frame.setLocation(screenDimension.width / 2 - frame.getSize().width / 2,
-				screenDimension.height / 2 - frame.getSize().height / 2);
+		frmXmlToJava.setLocation(screenDimension.width / 2 - frmXmlToJava.getSize().width / 2,
+				screenDimension.height / 2 - frmXmlToJava.getSize().height / 2);
 
 		convertButton = new JButton("Convert");
 		convertButton.setBounds(240, 165, 120, 40);
-		convertButton.setLocation(frame.getSize().width / 2 - convertButton.getSize().width / 2, 165);
+		convertButton.setLocation(frmXmlToJava.getSize().width / 2 - convertButton.getSize().width / 2, 165);
 		convertButton.setFont(new Font("Tahoma", Font.BOLD, 12));
 		convertButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -182,11 +182,11 @@ public class XMLToJava {
 
 			}
 		});
-		frame.getContentPane().add(convertButton);
+		frmXmlToJava.getContentPane().add(convertButton);
 
 		JScrollPane scrollPane = new JScrollPane();
 		scrollPane.setBounds(10, 220, 570, 225);
-		frame.getContentPane().add(scrollPane);
+		frmXmlToJava.getContentPane().add(scrollPane);
 
 		scrollPane.setViewportView(resultTextPane);
 		resultTextPane.setEditable(false);
@@ -205,7 +205,7 @@ public class XMLToJava {
 				FileNameExtensionFilter xmlFileNameExtensionFilter = new FileNameExtensionFilter("XML Files", "xml");
 				xmlFileChooser.setFileFilter(xmlFileNameExtensionFilter);
 
-				int xsdFileChooserReturnVal = xmlFileChooser.showOpenDialog(frame);
+				int xsdFileChooserReturnVal = xmlFileChooser.showOpenDialog(frmXmlToJava);
 				if (xsdFileChooserReturnVal == JFileChooser.APPROVE_OPTION) {
 					xmlFileSelected = xmlFileChooser.getSelectedFile();
 					selextedXMLFileLabel.setText(xmlFileSelected.getName());
@@ -216,7 +216,7 @@ public class XMLToJava {
 		});
 		selectXMLFileButton.setFont(new Font("Tahoma", Font.BOLD, 12));
 		selectXMLFileButton.setBounds(25, 11, 250, 40);
-		frame.getContentPane().add(selectXMLFileButton);
+		frmXmlToJava.getContentPane().add(selectXMLFileButton);
 
 		JButton selectDirForJavaFilesButton = new JButton(
 				"<html><center>Select Directory to save <br />Java classes</center></html>");
@@ -229,7 +229,7 @@ public class XMLToJava {
 				javaFilesDirFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 				javaFilesDirFileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 
-				int dirForJavaClassesFileChooserReturnVal = javaFilesDirFileChooser.showOpenDialog(frame);
+				int dirForJavaClassesFileChooserReturnVal = javaFilesDirFileChooser.showOpenDialog(frmXmlToJava);
 				if (dirForJavaClassesFileChooserReturnVal == JFileChooser.APPROVE_OPTION) {
 					selectedDirForJavaFiles = javaFilesDirFileChooser.getSelectedFile();
 					selectedDirForJavaFilesLabel.setText(selectedDirForJavaFiles.getName());
@@ -240,21 +240,21 @@ public class XMLToJava {
 		});
 		selectDirForJavaFilesButton.setFont(new Font("Tahoma", Font.BOLD, 12));
 		selectDirForJavaFilesButton.setBounds(25, 62, 250, 40);
-		frame.getContentPane().add(selectDirForJavaFilesButton);
+		frmXmlToJava.getContentPane().add(selectDirForJavaFilesButton);
 
 		selextedXMLFileLabel = new JLabel("");
 		selextedXMLFileLabel.setHorizontalAlignment(SwingConstants.CENTER);
 		selextedXMLFileLabel.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 		selextedXMLFileLabel.setFont(new Font("Trebuchet MS", Font.BOLD, 11));
 		selextedXMLFileLabel.setBounds(310, 11, 260, 40);
-		frame.getContentPane().add(selextedXMLFileLabel);
+		frmXmlToJava.getContentPane().add(selextedXMLFileLabel);
 
 		selectedDirForJavaFilesLabel = new JLabel("");
 		selectedDirForJavaFilesLabel.setHorizontalAlignment(SwingConstants.CENTER);
 		selectedDirForJavaFilesLabel.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 		selectedDirForJavaFilesLabel.setFont(new Font("Trebuchet MS", Font.BOLD, 11));
 		selectedDirForJavaFilesLabel.setBounds(310, 62, 260, 40);
-		frame.getContentPane().add(selectedDirForJavaFilesLabel);
+		frmXmlToJava.getContentPane().add(selectedDirForJavaFilesLabel);
 
 		enterPackageNameLabel = new JLabel();
 		enterPackageNameLabel.setToolTipText("Enter package name");
@@ -263,7 +263,7 @@ public class XMLToJava {
 		enterPackageNameLabel.setFont(new Font("Trebuchet MS", Font.BOLD, 14));
 		enterPackageNameLabel.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 		enterPackageNameLabel.setBounds(25, 114, 250, 40);
-		frame.getContentPane().add(enterPackageNameLabel);
+		frmXmlToJava.getContentPane().add(enterPackageNameLabel);
 
 		packageNameTextField = new JTextField();
 		packageNameTextField.addMouseMotionListener(new MouseMotionAdapter() {
@@ -290,7 +290,7 @@ public class XMLToJava {
 		});
 		packageNameTextField.setFont(new Font("Source Code Pro Semibold", Font.PLAIN, 12));
 		packageNameTextField.setBounds(310, 113, 260, 41);
-		frame.getContentPane().add(packageNameTextField);
+		frmXmlToJava.getContentPane().add(packageNameTextField);
 		packageNameTextField.setColumns(50);
 
 		packageNameTextFieldContextMenu = new JPopupMenu();

@@ -1,0 +1,15 @@
+<aspectj>
+	<aspects>
+		<concrete-aspect name="com.maintainj.inst.J2SEAspect" extends="com.maintainj.aspect.J2SEExecutionAspect">
+			<pointcut name="anyExecution" expression="execution( * *.*(..)) || execution( *.new(..))"/>
+			<pointcut name="beforeMain" expression="execution(public static void mevenk.xmltojava.XMLToJava.main(String[])) || execution(public static void mevenk.xmltojava.XMLToJava.main(String...))"/>
+		</concrete-aspect>
+	</aspects>
+	<weaver options="-proceedOnError -nowarn -XaddSerialVersionUID  -Xset:makeTjpFieldsTransient=true -Xset:avoidFinal=true -showWeaveInfo -verbose ">
+		<include within="mevenk..*"/>
+		<include within="mevenk.xmltojava.XMLToJava"/>
+		<exclude within="*ObjectFactory"/>
+		<exclude within="*..*CGLIB*"/>
+		<exclude within="com.maintainj..*"/>
+	</weaver>
+</aspectj>
