@@ -54,7 +54,7 @@ public class XMLToJava {
 	private static JTextPane resultTextPane = new JTextPane();
 	private JLabel enterPackageNameLabel;
 	private JTextField packageNameTextField;
-	
+
 	JPopupMenu packageNameTextFieldContextMenu = new JPopupMenu();
 
 	/**
@@ -109,7 +109,7 @@ public class XMLToJava {
 		convertButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
-				//frame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
+				// frame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
 
 				boolean valid = true;
 
@@ -139,7 +139,7 @@ public class XMLToJava {
 					}
 
 					if (!valid) {
-						//frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+						// frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 						return;
 					}
 
@@ -155,7 +155,7 @@ public class XMLToJava {
 
 					if (!xsdFileGenerated) {
 						System.out.println("XSD Generation Failure");
-						//frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+						// frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 						return;
 
 					} else {
@@ -175,10 +175,10 @@ public class XMLToJava {
 
 				} catch (Exception exception) {
 					exception.printStackTrace();
-					//frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+					// frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 				}
 
-				//frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+				// frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 
 			}
 		});

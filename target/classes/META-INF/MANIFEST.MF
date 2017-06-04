@@ -1,7 +1,8 @@
 Manifest-Version: 1.0
 Built-By: Venkatesh
-Class-Path: lib/xsd-gen-0.2.1.jar lib/wiztools-commons-lib-0.4.1.jar l
- ib/xom-1.2.5.jar lib/cli-7.jar
+Class-Path: xsd-gen-0.2.1.jar cli-7.jar wiztools-commons-lib-0.4.1.jar
+  xom-1.2.5.jar xml-apis-1.3.03.jar xercesImpl-2.8.0.jar xalan-2.7.0.j
+ ar jaxen-1.1.6.jar
 Build-Jdk: 1.8.0_121
 Created-By: Maven Integration for Eclipse
 Main-Class: mevenk.xmltojava.XMLToJava
