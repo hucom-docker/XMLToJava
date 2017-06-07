@@ -11,7 +11,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -34,10 +33,13 @@ import javax.swing.text.Document;
 
 import mevenk.xmltoxsd.XSDGenerator;
 import mevenk.xsdtojava.XJCProcessExecutor;
+import java.awt.Window.Type;
 
 public class XMLToJava {
 
-	public static final String lineSeparator = System.lineSeparator();
+	public static final String LINE_SEPARATOR = System.lineSeparator();
+
+	private static final String FILE_SEPARATOR = File.separator;
 
 	private JFrame frmXmlToJava;
 	private JButton convertButton;
@@ -49,13 +51,14 @@ public class XMLToJava {
 
 	private File xmlFileSelected;
 	private File xsdFileFromXML;
-	private File selectedDirForJavaFiles;
+	private File selectedDirectoryToSaveFiles;
 
 	private static JTextPane resultTextPane = new JTextPane();
 	private JLabel enterPackageNameLabel;
 	private JTextField packageNameTextField;
 
 	JPopupMenu packageNameTextFieldContextMenu = new JPopupMenu();
+	JPopupMenu resultTextPaneContextMenu = new JPopupMenu();
 
 	/**
 	 * Launch the application.
@@ -68,12 +71,15 @@ public class XMLToJava {
 			System.setOut(resultTextPanePrintStream);
 			System.setErr(resultTextPanePrintStream);
 			System.out.println();
+			System.out.println("Select Empty Directory to save Files");
+			System.out.println("Will be replaced if not empty !!");
+			System.out.println();
 
 			XMLToJava window = new XMLToJava();
 			window.frmXmlToJava.setVisible(true);
 
 		} catch (Exception exception) {
-			JOptionPane.showMessageDialog(null, "Error!!" + lineSeparator + exception.getMessage(), "Error",
+			JOptionPane.showMessageDialog(null, "Error!!" + LINE_SEPARATOR + exception.getMessage(), "Error",
 					JOptionPane.ERROR_MESSAGE);
 		}
 	}
@@ -92,6 +98,8 @@ public class XMLToJava {
 	 */
 	private void initialize() {
 		frmXmlToJava = new JFrame();
+		frmXmlToJava.setIconImage(Toolkit.getDefaultToolkit().getImage(XMLToJava.class.getResource("/mevenk/image/mevenkGitHubLogo.png")));
+		frmXmlToJava.setType(Type.UTILITY);
 		frmXmlToJava.setTitle("XML To JAVA");
 		frmXmlToJava.setResizable(false);
 		frmXmlToJava.setBounds(100, 100, 600, 500);
@@ -112,6 +120,7 @@ public class XMLToJava {
 				// frame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
 
 				boolean valid = true;
+				boolean xsdFileGenerated = false;
 
 				try {
 
@@ -121,14 +130,14 @@ public class XMLToJava {
 						System.out.println("XML File required !!");
 						valid = false;
 					} else {
-						System.out.println("XSD File : " + xmlFileSelected.getPath());
+						System.out.println("XML File : " + xmlFileSelected.getPath());
 					}
 
-					if (selectedDirForJavaFiles == null || !selectedDirForJavaFiles.exists()) {
+					if (selectedDirectoryToSaveFiles == null || !selectedDirectoryToSaveFiles.exists()) {
 						System.out.println("Dir for Java Files required !!");
 						valid = false;
 					} else {
-						System.out.println("Dir path : " + selectedDirForJavaFiles.getPath());
+						System.out.println("Dir path : " + selectedDirectoryToSaveFiles.getPath());
 					}
 
 					if (packageNameTextField.getText().length() == 0) {
@@ -143,37 +152,36 @@ public class XMLToJava {
 						return;
 					}
 
-					xsdFileFromXML = new File(xmlFileSelected.getParent() + File.separator
+					xsdFileFromXML = new File(selectedDirectoryToSaveFiles + FILE_SEPARATOR
 							+ xmlFileSelected.getName().replaceFirst("[.][^.]+$", "") + ".xsd");
 
-					if (xsdFileFromXML.exists()) {
-						System.out.println(lineSeparator + "Deleting existing XSD(" + xsdFileFromXML.getPath() + ")");
-						xsdFileFromXML.delete();
+					if (selectedDirectoryToSaveFiles.listFiles().length != 0) {
+						System.out.println(LINE_SEPARATOR + "Selected Directory not Empty" + LINE_SEPARATOR
+								+ "Deleting " + selectedDirectoryToSaveFiles.getPath() + LINE_SEPARATOR);
+						selectedDirectoryToSaveFiles.delete();
+						selectedDirectoryToSaveFiles.mkdir();
 					}
 
-					boolean xsdFileGenerated = new XSDGenerator().generateXSD(xmlFileSelected, xsdFileFromXML);
+					xsdFileGenerated = new XSDGenerator().generateXSD(xmlFileSelected, xsdFileFromXML);
 
 					if (!xsdFileGenerated) {
-						System.out.println("XSD Generation Failure");
+						System.out.println(LINE_SEPARATOR + "XSD Generation Failure" + LINE_SEPARATOR);
 						// frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 						return;
 
 					} else {
-						System.out.println("XSD Generation Success");
+						System.out.println(LINE_SEPARATOR + "XSD Generation Success" + LINE_SEPARATOR);
 					}
 
-					if (selectedDirForJavaFiles.listFiles().length != 0) {
-						System.out.println(
-								lineSeparator + "Deleting " + selectedDirForJavaFiles.getPath() + lineSeparator);
-						selectedDirForJavaFiles.delete();
-						selectedDirForJavaFiles.mkdir();
-					}
-
-					XJCProcessExecutor xJCProcessExecutor = new XJCProcessExecutor();
-					xJCProcessExecutor.executeXJCCommand(selectedDirForJavaFiles.getPath(),
+					new XJCProcessExecutor().executeXJCCommand(selectedDirectoryToSaveFiles.getPath(),
 							packageNameTextField.getText(), xsdFileFromXML.getPath());
 
 				} catch (Exception exception) {
+
+					if (!xsdFileGenerated) {
+						System.out.println(LINE_SEPARATOR + "XSD Generation Failure" + LINE_SEPARATOR);
+						// frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+					}
 					exception.printStackTrace();
 					// frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 				}
@@ -193,6 +201,30 @@ public class XMLToJava {
 		resultTextPane.setFont(new Font("Consolas", Font.BOLD, 12));
 		resultTextPane.setForeground(Color.WHITE);
 		resultTextPane.setBackground(Color.BLACK);
+
+		JButton resultTextPaneContextMenuCopyButton = new JButton(" Copy To Clipboard ");
+		resultTextPaneContextMenuCopyButton.addMouseListener(new MouseAdapter() {
+
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				String resultTextPaneText = resultTextPane.getText();
+
+				if (resultTextPaneText != null && resultTextPaneText.length() > 0) {
+
+					StringSelection resultTextPaneTextStringSelection = new StringSelection(resultTextPaneText);
+					Toolkit.getDefaultToolkit().getSystemClipboard().setContents(resultTextPaneTextStringSelection,
+							null);
+				}
+
+				if (resultTextPaneContextMenu.isShowing()) {
+					resultTextPaneContextMenu.setVisible(false);
+				}
+			}
+
+		});
+
+		resultTextPaneContextMenu.add(resultTextPaneContextMenuCopyButton);
+		addPopup(resultTextPane, resultTextPaneContextMenu);
 
 		JButton selectXMLFileButton = new JButton("<html><center>Select XML File</center></html>");
 		selectXMLFileButton.setToolTipText("Select XML File");
@@ -219,7 +251,7 @@ public class XMLToJava {
 		frmXmlToJava.getContentPane().add(selectXMLFileButton);
 
 		JButton selectDirForJavaFilesButton = new JButton(
-				"<html><center>Select Directory to save <br />Java classes</center></html>");
+				"<html><center>Select Directory to save <br />Files</center></html>");
 		selectDirForJavaFilesButton.setToolTipText("Select Directory to save Java classes");
 		selectDirForJavaFilesButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -231,9 +263,9 @@ public class XMLToJava {
 
 				int dirForJavaClassesFileChooserReturnVal = javaFilesDirFileChooser.showOpenDialog(frmXmlToJava);
 				if (dirForJavaClassesFileChooserReturnVal == JFileChooser.APPROVE_OPTION) {
-					selectedDirForJavaFiles = javaFilesDirFileChooser.getSelectedFile();
-					selectedDirForJavaFilesLabel.setText(selectedDirForJavaFiles.getName());
-					selectedDirForJavaFilesLabel.setToolTipText(selectedDirForJavaFiles.getPath());
+					selectedDirectoryToSaveFiles = javaFilesDirFileChooser.getSelectedFile();
+					selectedDirForJavaFilesLabel.setText(selectedDirectoryToSaveFiles.getName());
+					selectedDirForJavaFilesLabel.setToolTipText(selectedDirectoryToSaveFiles.getPath());
 				}
 
 			}
@@ -266,28 +298,6 @@ public class XMLToJava {
 		frmXmlToJava.getContentPane().add(enterPackageNameLabel);
 
 		packageNameTextField = new JTextField();
-		packageNameTextField.addMouseMotionListener(new MouseMotionAdapter() {
-			@Override
-			public void mouseMoved(MouseEvent e) {
-				String packageNameTextFieldtext = packageNameTextField.getText();
-				String clipboardString;
-				try {
-					clipboardString = (String) Toolkit.getDefaultToolkit().getSystemClipboard()
-							.getData(DataFlavor.stringFlavor);
-
-					if (packageNameTextFieldtext != null && packageNameTextFieldtext.length() > 0
-							&& clipboardString.equalsIgnoreCase(packageNameTextFieldtext)) {
-						packageNameTextField.setToolTipText("Copied to Clipboard");
-					} else {
-						packageNameTextField.setToolTipText(null);
-					}
-
-				} catch (Exception exception) {
-					packageNameTextField.setToolTipText("Clipboard copy/pase not working !");
-				}
-
-			}
-		});
 		packageNameTextField.setFont(new Font("Source Code Pro Semibold", Font.PLAIN, 12));
 		packageNameTextField.setBounds(310, 113, 260, 41);
 		frmXmlToJava.getContentPane().add(packageNameTextField);
@@ -296,7 +306,7 @@ public class XMLToJava {
 		packageNameTextFieldContextMenu = new JPopupMenu();
 		addPopup(packageNameTextField, packageNameTextFieldContextMenu);
 
-		JButton packageNameTextFieldContextMenuCopyButton = new JButton("Copy");
+		JButton packageNameTextFieldContextMenuCopyButton = new JButton(" Copy  ");
 		packageNameTextFieldContextMenuCopyButton.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
@@ -308,7 +318,6 @@ public class XMLToJava {
 							packageNameTextFieldtext);
 					Toolkit.getDefaultToolkit().getSystemClipboard()
 							.setContents(packageNameTextFieldTextStringSelection, null);
-					packageNameTextField.setToolTipText("Copied to Clipboard");
 				}
 
 				if (packageNameTextFieldContextMenu.isShowing()) {
@@ -318,7 +327,7 @@ public class XMLToJava {
 		});
 		packageNameTextFieldContextMenu.add(packageNameTextFieldContextMenuCopyButton);
 
-		JButton packageNameTextFieldContextMenuPasteButton = new JButton("Paste");
+		JButton packageNameTextFieldContextMenuPasteButton = new JButton(" Paste ");
 		packageNameTextFieldContextMenuPasteButton.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {

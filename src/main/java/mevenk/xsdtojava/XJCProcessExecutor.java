@@ -14,7 +14,7 @@ import mevenk.xmltojava.XMLToJava;
  */
 public class XJCProcessExecutor {
 
-	static final String lineSeparator = XMLToJava.lineSeparator;
+	static final String lineSeparator = XMLToJava.LINE_SEPARATOR;
 
 	private enum XJCCommandResult {
 		SUCCESS("JAVA Conversion Success"), FAIL("JAVA Conversion Fail(XJC Command Fail)");
